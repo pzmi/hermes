@@ -1,19 +1,32 @@
 package pl.allegro.tech.hermes.frontend;
 
 import com.google.common.collect.Lists;
+import com.google.inject.Guice;
+import com.google.inject.Inject;
+import com.google.inject.Injector;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.Binder;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.jvnet.hk2.guice.bridge.api.GuiceBridge;
+import org.jvnet.hk2.guice.bridge.api.GuiceIntoHK2Bridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.di.CommonBinder;
+import pl.allegro.tech.hermes.common.di.guice.ConfigurationModule;
+import pl.allegro.tech.hermes.common.di.guice.JsonMapperModule;
+import pl.allegro.tech.hermes.common.di.guice.MetricsModule;
+import pl.allegro.tech.hermes.common.di.guice.NetworkUtilsModule;
+import pl.allegro.tech.hermes.common.di.guice.TimeModule;
+import pl.allegro.tech.hermes.common.di.guice.ZookeeperMetricsModule;
+import pl.allegro.tech.hermes.common.di.guice.ZookeeperModule;
 import pl.allegro.tech.hermes.common.hook.FlushLogsShutdownHook;
 import pl.allegro.tech.hermes.common.hook.Hook;
 import pl.allegro.tech.hermes.common.hook.HooksHandler;
 import pl.allegro.tech.hermes.common.hook.ServiceAwareHook;
 import pl.allegro.tech.hermes.common.kafka.KafkaNamesMapper;
+import pl.allegro.tech.hermes.common.metric.counter.CounterStorage;
 import pl.allegro.tech.hermes.frontend.di.FrontendBinder;
 import pl.allegro.tech.hermes.frontend.di.PersistentBufferExtension;
 import pl.allegro.tech.hermes.frontend.di.TrackersBinder;
@@ -144,7 +157,29 @@ public final class HermesFrontend {
     private ServiceLocator createDIContainer(List<Binder> binders) {
         String uniqueName = "HermesFrontendLocator" + UUID.randomUUID();
 
-        return ServiceLocatorUtilities.bind(uniqueName, binders.toArray(new Binder[binders.size()]));
+        ServiceLocator locator = ServiceLocatorUtilities.bind(uniqueName, binders.toArray(new Binder[binders.size()]));
+
+        GuiceBridge.getGuiceBridge().initializeGuiceBridge(locator);
+        GuiceIntoHK2Bridge guiceBridge = locator.getService(GuiceIntoHK2Bridge.class);
+        guiceBridge.bridgeGuiceInjector(createGuiceInjector());
+
+        // temporary hack to initialize CounterStorage
+        locator.getService(CounterStorage.class);
+
+        return locator;
+    }
+
+    private Injector createGuiceInjector() {
+        Injector injector = Guice.createInjector(
+                new TimeModule(),
+                new NetworkUtilsModule(),
+                new ConfigurationModule(),
+                new JsonMapperModule(),
+                new MetricsModule("producer"),
+                new ZookeeperModule(),
+                new ZookeeperMetricsModule()
+        );
+        return injector;
     }
 
     public static Builder frontend() {

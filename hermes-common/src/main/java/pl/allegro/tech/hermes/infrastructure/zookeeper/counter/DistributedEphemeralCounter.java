@@ -50,7 +50,7 @@ public class DistributedEphemeralCounter {
                 }
             }
         } catch (Exception e) {
-            logger.error(String.format("Error while reading value for path %s/?/%s", basePath, childrenPath), e);
+            logger.error(String.format("Error while reading value for path %s%s", basePath, childrenPath), e);
         } finally {
             return sum;
         }

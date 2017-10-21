@@ -1,11 +1,22 @@
 package pl.allegro.tech.hermes.consumers;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.Binder;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.jvnet.hk2.component.MultiMap;
+import org.jvnet.hk2.guice.bridge.api.GuiceBridge;
+import org.jvnet.hk2.guice.bridge.api.GuiceIntoHK2Bridge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.allegro.tech.hermes.common.di.guice.ConfigurationModule;
+import pl.allegro.tech.hermes.common.di.guice.JsonMapperModule;
+import pl.allegro.tech.hermes.common.di.guice.MetricsModule;
+import pl.allegro.tech.hermes.common.di.guice.NetworkUtilsModule;
+import pl.allegro.tech.hermes.common.di.guice.TimeModule;
+import pl.allegro.tech.hermes.common.di.guice.ZookeeperMetricsModule;
+import pl.allegro.tech.hermes.common.di.guice.ZookeeperModule;
 import pl.allegro.tech.hermes.common.hook.FlushLogsShutdownHook;
 import pl.allegro.tech.hermes.common.hook.HooksHandler;
 import pl.allegro.tech.hermes.consumers.consumer.oauth.client.OAuthClient;
@@ -108,7 +119,27 @@ public class HermesConsumers {
 
     private ServiceLocator createDIContainer(List<Binder> binders) {
         String uniqueName = "HermesConsumersLocator" + UUID.randomUUID();
-        return ServiceLocatorUtilities.bind(uniqueName, binders.toArray(new Binder[binders.size()]));
+
+        ServiceLocator locator = ServiceLocatorUtilities.bind(uniqueName, binders.toArray(new Binder[binders.size()]));
+
+        GuiceBridge.getGuiceBridge().initializeGuiceBridge(locator);
+        GuiceIntoHK2Bridge guiceBridge = locator.getService(GuiceIntoHK2Bridge.class);
+        guiceBridge.bridgeGuiceInjector(createGuiceInjector());
+
+        return locator;
+    }
+
+    private Injector createGuiceInjector() {
+        Injector injector = Guice.createInjector(
+                new TimeModule(),
+                new NetworkUtilsModule(),
+                new ConfigurationModule(),
+                new JsonMapperModule(),
+                new MetricsModule("consumers"),
+                new ZookeeperModule(),
+                new ZookeeperMetricsModule()
+        );
+        return injector;
     }
 
     public <T> T getService(Class<T> clazz) {

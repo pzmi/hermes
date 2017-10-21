@@ -44,6 +44,7 @@ public class ZookeeperMetricsFactory implements Factory<CounterStorage> {
                 sharedCounter, distributedCounter, subscriptionRepository, pathsCompiler, configFactory
         );
 
+
         if (configFactory.getBooleanProperty(Configs.METRICS_ZOOKEEPER_REPORTER)) {
             reporter = new ZookeeperCounterReporter(metricRegistry, counterStorage, configFactory);
             reporter.start(
