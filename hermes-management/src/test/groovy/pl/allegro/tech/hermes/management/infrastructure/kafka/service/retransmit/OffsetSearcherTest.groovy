@@ -19,6 +19,17 @@ class OffsetSearcherTest extends Specification {
         expect:
         searcher.search(Range.closed(0L, 10L), 1000L) == 6L
     }
+
+    def "should return min offset for min timestamp"() {
+        given:
+        extractor.extract(4L) >> 800L
+        extractor.extract(7L) >> 1100L
+        extractor.extract(5L) >> 900L
+        extractor.extract(6L) >> 1000L
+
+        expect:
+        searcher.search(Range.closed(0L, 10L), 0L) == 0L
+    }
     
     def "should find offset nearest to given timestamp"() {
         given:

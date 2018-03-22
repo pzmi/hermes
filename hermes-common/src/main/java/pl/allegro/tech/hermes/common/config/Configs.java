@@ -158,6 +158,7 @@ public enum Configs {
 
     CONSUMER_RECEIVER_POOL_TIMEOUT("consumer.receiver.pool.timeout", 100),
     CONSUMER_RECEIVER_READ_QUEUE_CAPACITY("consumer.receiver.read.queue.capacity", 1000),
+    CONSUMER_RETRANSMISSION_QUEUE_CAPACITY("consumer.receiver.retransmission.queue.capacity", 20),
 
     CONSUMER_COMMIT_OFFSET_PERIOD("consumer.commit.offset.period", 60),
     CONSUMER_COMMIT_OFFSET_QUEUES_SIZE("consumer.commit.offset.queues.size", 200_000),
@@ -257,8 +258,8 @@ public enum Configs {
     SCHEMA_REPOSITORY_SERVER_URL("schema.repository.serverUrl", "http://localhost:8888/"),
     SCHEMA_REPOSITORY_HTTP_READ_TIMEOUT_MS("schema.repository.http.read.timeout.ms", 2000),
     SCHEMA_REPOSITORY_HTTP_CONNECT_TIMEOUT_MS("schema.repository.http.connect.timeout.ms", 2000),
-    SCHEMA_REPOSITORY_ONLINE_CHECK_PERMITS_PER_SECOND("schema.repository.online.check.permits.per.second", 100.0),
-    SCHEMA_REPOSITORY_ONLINE_CHECK_ACQUIRE_WAIT_MS("schema.repository.online.check.acquire.wait.ms", 500),
+    SCHEMA_REPOSITORY_ONLINE_CHECK_PERMITS_PER_SECOND("schema.repository.online.check.permits.per.second", 10000.0),
+    SCHEMA_REPOSITORY_ONLINE_CHECK_ACQUIRE_WAIT_MS("schema.repository.online.check.acquire.wait.ms", 5000),
 
     UNDELIVERED_MESSAGE_LOG_PERSIST_PERIOD_MS("undelivered.message.log.persist.period.ms", 5000);
 
