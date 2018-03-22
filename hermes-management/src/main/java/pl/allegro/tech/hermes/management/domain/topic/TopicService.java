@@ -186,7 +186,6 @@ public class TopicService {
         topicValidator.ensureUpdatedTopicIsValid(modified, retrieved);
 
         if (!retrieved.equals(modified)) {
-            Instant beforeMigrationInstant = clock.instant();
             if (retrieved.getRetentionTime() != modified.getRetentionTime()) {
                 multiDCAwareService.manageTopic(brokerTopicManagement ->
                         brokerTopicManagement.updateTopic(modified)
@@ -194,7 +193,7 @@ public class TopicService {
             }
             topicRepository.updateTopic(modified);
             if (!retrieved.wasMigratedFromJsonType() && modified.wasMigratedFromJsonType()) {
-                topicContentTypeMigrationService.notifySubscriptions(modified, beforeMigrationInstant);
+                topicContentTypeMigrationService.notifySubscriptions(modified, Instant.MIN);
             }
             auditor.objectUpdated(modifiedBy, retrieved, modified);
         }
