@@ -79,6 +79,9 @@ public class KafkaRetransmissionService implements RetransmissionService {
 
     private long getLastOffset(SimpleConsumer consumer, Topic topic, KafkaTopic kafkaTopic, int partition, long timestamp) {
         Range<Long> offsetRange = getOffsetRange(consumer, kafkaTopic, partition);
+        if (timestamp == 0) {
+            return offsetRange.lowerEndpoint();
+        }
         return search(topic, kafkaTopic, partition, offsetRange, timestamp);
     }
 

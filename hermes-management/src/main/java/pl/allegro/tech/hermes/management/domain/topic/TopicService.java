@@ -193,7 +193,7 @@ public class TopicService {
             }
             topicRepository.updateTopic(modified);
             if (!retrieved.wasMigratedFromJsonType() && modified.wasMigratedFromJsonType()) {
-                topicContentTypeMigrationService.notifySubscriptions(modified, Instant.MIN);
+                topicContentTypeMigrationService.notifySubscriptions(modified, Instant.EPOCH);
             }
             auditor.objectUpdated(modifiedBy, retrieved, modified);
         }
