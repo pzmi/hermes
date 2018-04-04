@@ -112,8 +112,8 @@ public class KafkaSingleThreadedMessageReceiver implements MessageReceiver {
     }
 
     private Message convertToMessage(ConsumerRecord<byte[], byte[]> record) {
-        UnwrappedMessageContent unwrappedContent = getUnwrappedMessageContent(record);
         KafkaTopic kafkaTopic = topics.get(record.topic());
+        UnwrappedMessageContent unwrappedContent = getUnwrappedMessageContent(record, kafkaTopic.contentType());
         return new Message(
                 unwrappedContent.getMessageMetadata().getId(),
                 topic.getQualifiedName(),
@@ -128,10 +128,11 @@ public class KafkaSingleThreadedMessageReceiver implements MessageReceiver {
         );
     }
 
-    private UnwrappedMessageContent getUnwrappedMessageContent(ConsumerRecord<byte[], byte[]> message) {
-        if (topic.getContentType() == ContentType.AVRO) {
+    private UnwrappedMessageContent getUnwrappedMessageContent(ConsumerRecord<byte[], byte[]> message,
+                                                               ContentType contentType) {
+        if (contentType == ContentType.AVRO) {
             return messageContentWrapper.unwrapAvro(message.value(), topic);
-        } else if (topic.getContentType() == ContentType.JSON) {
+        } else if (contentType == ContentType.JSON) {
             return messageContentWrapper.unwrapJson(message.value());
         }
         throw new UnsupportedContentTypeException(topic);
