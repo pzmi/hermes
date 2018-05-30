@@ -25,7 +25,7 @@ import java.util.Map;
 @Listeners({RetryListener.class})
 public class HermesIntegrationEnvironment implements EnvironmentAware {
 
-    private static final Map<Class<?>, Starter<?>> STARTERS = new LinkedHashMap<>();
+    protected static final Map<Class<?>, Starter<?>> STARTERS = new LinkedHashMap<>();
 
     static {
         STARTERS.put(ZookeeperStarter.class, new ZookeeperStarter(ZOOKEEPER_PORT, ZOOKEEPER_CONNECT_STRING, CONFIG_FACTORY.getStringProperty(Configs.ZOOKEEPER_ROOT) + "/groups"));
