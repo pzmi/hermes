@@ -127,12 +127,14 @@ public class ConsumerProcessSupervisor implements Runnable {
                     taskQueue.offer(signal.createChild(KILL_UNHEALTHY, killTime()));
                 });
                 break;
+                // TODO: wtf
             case KILL_UNHEALTHY:
                 onConsumerProcess(signal, consumerProcess -> {
                     taskQueue.offer(signal.createChild(START, clock.millis(), consumerProcess.getConsumer()));
                     kill(signal);
                 });
                 break;
+                //
             case CLEANUP:
                 cleanup(signal);
                 break;
