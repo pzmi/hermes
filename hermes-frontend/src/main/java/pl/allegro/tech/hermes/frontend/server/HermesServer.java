@@ -1,47 +1,30 @@
 package pl.allegro.tech.hermes.frontend.server;
 
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.RoutingHandler;
 import io.undertow.server.handlers.RequestDumpingHandler;
-import org.xnio.SslClientAuthMode;
 import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.config.Configs;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
 import pl.allegro.tech.hermes.frontend.publishing.handlers.ThroughputLimiter;
 import pl.allegro.tech.hermes.frontend.publishing.preview.MessagePreviewPersister;
+import pl.allegro.tech.hermes.frontend.server.handlers.HttpHandlersPipeline;
 import pl.allegro.tech.hermes.frontend.services.HealthCheckService;
 
 import javax.inject.Inject;
 
-import static io.undertow.UndertowOptions.ALWAYS_SET_KEEP_ALIVE;
-import static io.undertow.UndertowOptions.ENABLE_HTTP2;
-import static io.undertow.UndertowOptions.MAX_COOKIES;
-import static io.undertow.UndertowOptions.MAX_HEADERS;
-import static io.undertow.UndertowOptions.MAX_PARAMETERS;
-import static io.undertow.UndertowOptions.REQUEST_PARSE_TIMEOUT;
-import static org.xnio.Options.BACKLOG;
-import static org.xnio.Options.KEEP_ALIVE;
-import static org.xnio.Options.READ_TIMEOUT;
-import static org.xnio.Options.SSL_CLIENT_AUTH_MODE;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_ALWAYS_SET_KEEP_ALIVE;
 import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_BACKLOG_SIZE;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_BUFFER_SIZE;
 import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_HOST;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_HTTP2_ENABLED;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_IO_THREADS_COUNT;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_MAX_COOKIES;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_MAX_HEADERS;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_MAX_PARAMETERS;
 import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_PORT;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_READ_TIMEOUT;
 import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_REQUEST_DUMPER;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_REQUEST_PARSE_TIMEOUT;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_SET_KEEP_ALIVE;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_SSL_CLIENT_AUTH_MODE;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_SSL_ENABLED;
 import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_SSL_PORT;
-import static pl.allegro.tech.hermes.common.config.Configs.FRONTEND_WORKER_THREADS_COUNT;
 
 public class HermesServer {
 
@@ -51,6 +34,7 @@ public class HermesServer {
     private final HermesMetrics hermesMetrics;
     private final ConfigFactory configFactory;
     private final HttpHandler publishingHandler;
+    private final HttpHandlersPipeline httpHandlersPipeline;
     private final HealthCheckService healthCheckService;
     private final MessagePreviewPersister messagePreviewPersister;
     private final int port;
@@ -64,6 +48,7 @@ public class HermesServer {
             ConfigFactory configFactory,
             HermesMetrics hermesMetrics,
             HttpHandler publishingHandler,
+            HttpHandlersPipeline httpHandlersPipeline,
             HealthCheckService healthCheckService,
             MessagePreviewPersister messagePreviewPersister,
             ThroughputLimiter throughputLimiter,
@@ -72,6 +57,7 @@ public class HermesServer {
         this.configFactory = configFactory;
         this.hermesMetrics = hermesMetrics;
         this.publishingHandler = publishingHandler;
+        this.httpHandlersPipeline = httpHandlersPipeline;
         this.healthCheckService = healthCheckService;
         this.messagePreviewPersister = messagePreviewPersister;
         this.sslContextFactoryProvider = sslContextFactoryProvider;
@@ -83,7 +69,7 @@ public class HermesServer {
     }
 
     public void start() {
-        configureServer().start();
+        startServer();
         messagePreviewPersister.start();
         throughputLimiter.start();
 
@@ -97,13 +83,36 @@ public class HermesServer {
         gracefulShutdown.handleShutdown();
     }
 
-    public void shutdown() throws InterruptedException {
+    public void shutdown() {
         undertow.stop();
         messagePreviewPersister.shutdown();
         throughputLimiter.stop();
     }
 
-    private Undertow configureServer() {
+
+    // TODO add support for:
+    // 1) SSL
+    // 2) graceful shutdown
+    // 3) HTTP 2
+    private void startServer() {
+        EventLoopGroup nioEventLoop = new NioEventLoopGroup(4);
+        try {
+            ServerBootstrap b = new ServerBootstrap()
+                    .option(ChannelOption.SO_BACKLOG, configFactory.getIntProperty(FRONTEND_BACKLOG_SIZE))
+                    .group(nioEventLoop)
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(httpHandlersPipeline);
+
+            Channel ch = b.bind(port).sync().channel();
+
+            ch.closeFuture().addListener(future ->
+                    nioEventLoop.shutdownGracefully());
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Rethrowing exception", e);
+        }
+
+        /*
         gracefulShutdown = new HermesShutdownHandler(handlers(), hermesMetrics);
         Undertow.Builder builder = Undertow.builder()
                 .addHttpListener(port, host)
@@ -128,6 +137,7 @@ public class HermesServer {
         }
         this.undertow = builder.build();
         return undertow;
+        */
     }
 
     private HttpHandler handlers() {
