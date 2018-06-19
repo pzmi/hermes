@@ -82,8 +82,8 @@ public class HermesMetrics {
         return metricRegistry.counter(metricRegistryName(metric, topicName));
     }
 
-    public Counter counter(String metric, TopicName topicName, String name) {
-        return metricRegistry.counter(metricRegistryName(metric, topicName, name));
+    public Counter counter(String metric, TopicName topicName, String subscriptionName) {
+        return metricRegistry.counter(metricRegistryName(metric, topicName, subscriptionName));
     }
 
     public void registerProducerInflightRequest(Gauge<Integer> gauge) {
