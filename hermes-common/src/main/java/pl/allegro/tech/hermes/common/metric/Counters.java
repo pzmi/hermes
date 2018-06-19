@@ -13,6 +13,7 @@ public class Counters {
             DISCARDED = "discarded." + GROUP + "." + TOPIC + "." + SUBSCRIPTION,
             FILTERED = "filtered." + GROUP + "." + TOPIC + "." + SUBSCRIPTION,
             INFLIGHT = "inflight." + GROUP + "." + TOPIC + "." + SUBSCRIPTION,
+            EMPTY_POLLS = "emptyPolls." + GROUP + "." + TOPIC + "." + SUBSCRIPTION,
             EXECUTOR_RUNNING = "executors." + EXECUTOR_NAME + ".running",
             SCHEDULED_EXECUTOR_OVERRUN = "executors." + EXECUTOR_NAME + ".overrun",
             MAXRATE_RATE_HISTORY_FAILURES =

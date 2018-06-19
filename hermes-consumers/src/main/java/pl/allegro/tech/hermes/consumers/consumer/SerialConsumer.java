@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_INFLIGHT_SIZE;
 import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_WAIT_TIME;
 import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_SIGNAL_PROCESSING_INTERVAL;
+import static pl.allegro.tech.hermes.common.metric.Counters.EMPTY_POLLS;
 import static pl.allegro.tech.hermes.consumers.consumer.message.MessageConverter.toMessageMetadata;
 
 public class SerialConsumer implements Consumer {
@@ -95,7 +96,7 @@ public class SerialConsumer implements Consumer {
     @Override
     public void consume(Runnable signalsInterrupt) {
         try {
-            Counter emptyPollsCounter = hermesMetrics.counter("emptyPolls", topic.getName(), subscription.getName());
+            Counter emptyPollsCounter = hermesMetrics.counter(EMPTY_POLLS, topic.getName(), subscription.getName());
 
             do {
                 signalsInterrupt.run();
