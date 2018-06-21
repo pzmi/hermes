@@ -1,4 +1,8 @@
 
+## 0.12.6 (21.06.2018)
+
+All issues and pull requests: [0.12.6 milestone](https://github.com/allegro/hermes/milestone/43)
+
 ## 0.12.5 (01.06.2018)
 
 All issues and pull requests: [0.12.5 milestone](https://github.com/allegro/hermes/milestone/42)
