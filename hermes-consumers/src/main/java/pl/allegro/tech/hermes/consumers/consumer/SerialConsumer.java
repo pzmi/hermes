@@ -91,6 +91,7 @@ public class SerialConsumer implements Consumer {
                 signalsInterrupt.run();
             } while (!inflightSemaphore.tryAcquire(signalProcessingInterval, TimeUnit.MILLISECONDS));
 
+            rateLimiter.acquireFiltered();
             Optional<Message> maybeMessage = messageReceiver.next();
 
             if (maybeMessage.isPresent()) {
