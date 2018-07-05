@@ -19,4 +19,8 @@ public interface ConsumerRateLimiter {
     void registerSuccessfulSending();
 
     void registerFailedSending();
+
+    void awaitUntilNextPoll();
+
+    void registerSuccessfulPoll();
 }

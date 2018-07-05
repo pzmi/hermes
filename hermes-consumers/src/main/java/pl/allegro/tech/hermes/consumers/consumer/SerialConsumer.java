@@ -75,6 +75,8 @@ public class SerialConsumer implements Consumer {
         this.messageReceiver = new UninitializedMessageReceiver();
         this.topic = topic;
         this.sender = consumerMessageSenderFactory.create(subscription, rateLimiter, offsetQueue, inflightSemaphore::release);
+
+
     }
 
     private int calculateInflightSize(Subscription subscription) {
@@ -94,6 +96,7 @@ public class SerialConsumer implements Consumer {
             Optional<Message> maybeMessage = messageReceiver.next();
 
             if (maybeMessage.isPresent()) {
+                rateLimiter.registerSuccessfulPoll();
                 Message message = maybeMessage.get();
 
                 if (logger.isDebugEnabled()) {
@@ -107,6 +110,7 @@ public class SerialConsumer implements Consumer {
                 sendMessage(convertedMessage);
             } else {
                 inflightSemaphore.release();
+                rateLimiter.awaitUntilNextPoll();
             }
         } catch (Exception e) {
             logger.error("Consumer loop failed for {}", subscription.getQualifiedName(), e);

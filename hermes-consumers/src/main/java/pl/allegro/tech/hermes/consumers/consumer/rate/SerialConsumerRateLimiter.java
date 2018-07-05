@@ -1,14 +1,23 @@
 package pl.allegro.tech.hermes.consumers.consumer.rate;
 
+import com.codahale.metrics.Timer;
 import com.google.common.util.concurrent.RateLimiter;
 import pl.allegro.tech.hermes.api.Subscription;
+import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
+import pl.allegro.tech.hermes.consumers.consumer.idleTime.ExponentiallyGrowingIdleTimeCalculator;
+import pl.allegro.tech.hermes.consumers.consumer.idleTime.IdleTimeCalculator;
 import pl.allegro.tech.hermes.consumers.consumer.rate.calculator.OutputRateCalculationResult;
 import pl.allegro.tech.hermes.consumers.consumer.rate.calculator.OutputRateCalculator;
 import pl.allegro.tech.hermes.consumers.consumer.rate.calculator.OutputRateCalculatorFactory;
 
 import java.time.Clock;
 import java.util.Objects;
+
+import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_INITIAL_IDLE_TIME;
+import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_MAX_IDLE_TIME;
+import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_WAIT_BETWEEN_UNSUCCESSFUL_POLLS;
+import static pl.allegro.tech.hermes.common.metric.Timers.CONSUMER_IDLE_TIME;
 
 public class SerialConsumerRateLimiter implements ConsumerRateLimiter {
 
@@ -26,9 +35,14 @@ public class SerialConsumerRateLimiter implements ConsumerRateLimiter {
 
     private final SendCounters sendCounters;
 
+    private final IdleTimeCalculator idleTimeCalculator;
+
+    private final boolean waitBetweenUnsuccessfulPolls;
+
     private OutputRateCalculator.Mode currentMode;
 
     public SerialConsumerRateLimiter(Subscription subscription,
+                                     ConfigFactory configFactory,
                                      OutputRateCalculatorFactory outputRateCalculatorFactory,
                                      HermesMetrics hermesMetrics,
                                      ConsumerRateLimitSupervisor rateLimitSupervisor,
@@ -41,6 +55,11 @@ public class SerialConsumerRateLimiter implements ConsumerRateLimiter {
         this.currentMode = OutputRateCalculator.Mode.NORMAL;
         this.rateLimiter = RateLimiter.create(calculateInitialRate().rate());
         this.filterRateLimiter = RateLimiter.create(subscription.getSerialSubscriptionPolicy().getRate());
+        this.idleTimeCalculator = new ExponentiallyGrowingIdleTimeCalculator(
+                configFactory.getIntProperty(CONSUMER_RECEIVER_INITIAL_IDLE_TIME),
+                configFactory.getIntProperty(CONSUMER_RECEIVER_MAX_IDLE_TIME)
+        );
+        this.waitBetweenUnsuccessfulPolls = configFactory.getBooleanProperty(CONSUMER_RECEIVER_WAIT_BETWEEN_UNSUCCESSFUL_POLLS);
     }
 
     @Override
@@ -121,5 +140,23 @@ public class SerialConsumerRateLimiter implements ConsumerRateLimiter {
     @Override
     public int hashCode() {
         return Objects.hashCode(subscription.getQualifiedName());
+    }
+
+    @Override
+    public void awaitUntilNextPoll() {
+        if (waitBetweenUnsuccessfulPolls) {
+            try (Timer.Context ctx = hermesMetrics.timer(CONSUMER_IDLE_TIME,
+                                                         subscription.getTopicName(),
+                                                         subscription.getName()).time()) {
+                Thread.sleep(idleTimeCalculator.increaseIdleTime());
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    @Override
+    public void registerSuccessfulPoll() {
+        idleTimeCalculator.reset();
     }
 }

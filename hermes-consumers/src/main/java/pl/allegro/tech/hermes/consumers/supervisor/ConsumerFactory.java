@@ -92,7 +92,8 @@ public class ConsumerFactory {
                     configFactory);
         } else {
             SerialConsumerRateLimiter consumerRateLimiter = new SerialConsumerRateLimiter(subscription,
-                    outputRateCalculatorFactory, hermesMetrics, consumerRateLimitSupervisor, clock);
+                    configFactory, outputRateCalculatorFactory, hermesMetrics,
+                    consumerRateLimitSupervisor, clock);
 
             return new SerialConsumer(
                     messageReceiverFactory,

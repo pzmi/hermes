@@ -35,4 +35,14 @@ public class BatchConsumerRateLimiter implements ConsumerRateLimiter {
     @Override
     public void registerFailedSending() {
     }
+
+    @Override
+    public void awaitUntilNextPoll() {
+
+    }
+
+    @Override
+    public void registerSuccessfulPoll() {
+
+    }
 }
