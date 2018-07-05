@@ -1,5 +1,6 @@
 package pl.allegro.tech.hermes.consumers.consumer;
 
+import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.api.Subscription;
@@ -7,6 +8,7 @@ import pl.allegro.tech.hermes.api.Topic;
 import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.config.Configs;
 import pl.allegro.tech.hermes.common.metric.HermesMetrics;
+import pl.allegro.tech.hermes.common.metric.Timers;
 import pl.allegro.tech.hermes.consumers.consumer.converter.MessageConverterResolver;
 import pl.allegro.tech.hermes.consumers.consumer.offset.OffsetQueue;
 import pl.allegro.tech.hermes.consumers.consumer.offset.SubscriptionPartitionOffset;
@@ -22,7 +24,10 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_INFLIGHT_SIZE;
+import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_INITIAL_IDLE_TIME;
+import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_RECEIVER_MAX_IDLE_TIME;
 import static pl.allegro.tech.hermes.common.config.Configs.CONSUMER_SIGNAL_PROCESSING_INTERVAL;
+import static pl.allegro.tech.hermes.common.metric.Timers.CONSUMER_IDLE_TIME;
 import static pl.allegro.tech.hermes.consumers.consumer.message.MessageConverter.toMessageMetadata;
 
 public class SerialConsumer implements Consumer {
@@ -42,6 +47,8 @@ public class SerialConsumer implements Consumer {
 
     private final int defaultInflight;
     private final int signalProcessingInterval;
+
+    private Procrastinator procrastinator;
 
     private Topic topic;
     private Subscription subscription;
@@ -75,6 +82,10 @@ public class SerialConsumer implements Consumer {
         this.messageReceiver = new UninitializedMessageReceiver();
         this.topic = topic;
         this.sender = consumerMessageSenderFactory.create(subscription, rateLimiter, offsetQueue, inflightSemaphore::release);
+        this.procrastinator = new Procrastinator(
+                configFactory.getIntProperty(CONSUMER_RECEIVER_INITIAL_IDLE_TIME),
+                configFactory.getIntProperty(CONSUMER_RECEIVER_MAX_IDLE_TIME)
+        );
     }
 
     private int calculateInflightSize(Subscription subscription) {
@@ -94,6 +105,7 @@ public class SerialConsumer implements Consumer {
             Optional<Message> maybeMessage = messageReceiver.next();
 
             if (maybeMessage.isPresent()) {
+                procrastinator.reportWork();
                 Message message = maybeMessage.get();
 
                 if (logger.isDebugEnabled()) {
@@ -107,9 +119,18 @@ public class SerialConsumer implements Consumer {
                 sendMessage(convertedMessage);
             } else {
                 inflightSemaphore.release();
+                procrastinate();
             }
         } catch (Exception e) {
             logger.error("Consumer loop failed for {}", subscription.getQualifiedName(), e);
+        }
+    }
+
+    private void procrastinate() {
+        try (Timer.Context timer = hermesMetrics.timer(CONSUMER_IDLE_TIME, topic.getName(), subscription.getName()).time()) {
+            Thread.sleep(procrastinator.getIdleTime());
+        } catch (InterruptedException ex) {
+            // ignore
         }
     }
 
