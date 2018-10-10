@@ -9,6 +9,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import pl.allegro.tech.hermes.api.ContentType;
 import pl.allegro.tech.hermes.api.Topic;
+import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.common.message.wrapper.DeserializationMetrics;
 import pl.allegro.tech.hermes.common.message.wrapper.JsonMessageContentWrapper;
 import pl.allegro.tech.hermes.common.message.wrapper.MessageContentWrapper;
@@ -146,7 +147,7 @@ public class MessageBufferLoadingTest extends IntegrationTest {
         JsonMessageContentWrapper contentWrapper = new JsonMessageContentWrapper(CONFIG_FACTORY, new ObjectMapper());
         SchemaOnlineChecksRateLimiter schemaOnlineCheckRateLimiter = () -> true;
         MessageContentWrapper wrapper = new MessageContentWrapper(contentWrapper, null, null,
-                schemaOnlineCheckRateLimiter, new DeserializationMetrics(new MetricRegistry()));
+                schemaOnlineCheckRateLimiter, new DeserializationMetrics(new MetricRegistry()), new ConfigFactory());
 
         String messageId = MessageIdGenerator.generate();
         long timestamp = now().toEpochMilli();

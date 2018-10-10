@@ -7,6 +7,7 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.junit.Before;
 import org.junit.Test;
 import pl.allegro.tech.hermes.api.Topic;
+import pl.allegro.tech.hermes.common.config.ConfigFactory;
 import pl.allegro.tech.hermes.schema.CompiledSchema;
 import pl.allegro.tech.hermes.schema.CompiledSchemaRepository;
 import pl.allegro.tech.hermes.schema.SchemaRepository;
@@ -37,7 +38,7 @@ public class MessageContentWrapperTest {
     private final JsonMessageContentWrapper jsonWrapper = new JsonMessageContentWrapper("message", "metadata", new ObjectMapper());
     private final AvroMessageContentWrapper avroWrapper = new AvroMessageContentWrapper(Clock.systemDefaultZone());
     private final MessageContentWrapper messageContentWrapper = new MessageContentWrapper(jsonWrapper, avroWrapper,
-            schemaRepository, () -> true, metrics);
+            schemaRepository, () -> true, metrics, new ConfigFactory());
 
     static CompiledSchema<Schema> schema1 = new CompiledSchema<>(load("/schema/user.avsc"), SchemaVersion.valueOf(1));
     static CompiledSchema<Schema> schema2 = new CompiledSchema<>(load("/schema/user_v2.avsc"), SchemaVersion.valueOf(2));
@@ -156,7 +157,7 @@ public class MessageContentWrapperTest {
         // given
         SchemaOnlineChecksRateLimiter rateLimiter = mock(SchemaOnlineChecksRateLimiter.class);
         when(rateLimiter.tryAcquireOnlineCheckPermit()).thenReturn(true);
-        MessageContentWrapper wrapper = new MessageContentWrapper(jsonWrapper,avroWrapper, schemaRepository, rateLimiter, metrics);
+        MessageContentWrapper wrapper = new MessageContentWrapper(jsonWrapper,avroWrapper, schemaRepository, rateLimiter, metrics, new ConfigFactory());
 
         // when forcing offline checks
         shouldUnwrapMessageWrappedWithSchemaAtVersion(wrapper, 1, false, false, 0, 0, 0, 0);

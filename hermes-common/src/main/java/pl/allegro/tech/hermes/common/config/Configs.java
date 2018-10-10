@@ -267,7 +267,9 @@ public enum Configs {
     SCHEMA_REPOSITORY_ONLINE_CHECK_PERMITS_PER_SECOND("schema.repository.online.check.permits.per.second", 100.0),
     SCHEMA_REPOSITORY_ONLINE_CHECK_ACQUIRE_WAIT_MS("schema.repository.online.check.acquire.wait.ms", 500),
 
-    UNDELIVERED_MESSAGE_LOG_PERSIST_PERIOD_MS("undelivered.message.log.persist.period.ms", 5000);
+    UNDELIVERED_MESSAGE_LOG_PERSIST_PERIOD_MS("undelivered.message.log.persist.period.ms", 5000),
+
+    MESSAGE_CONTENT_WRAPPER_AGGREGATING_LOGGERS_REPORTING_INTERVAL("message.content.wrapper.aggregating.loggers.reporting.interval", 10_000L);
 
     private final String name;
 

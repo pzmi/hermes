@@ -1,10 +1,13 @@
 package pl.allegro.tech.hermes.common.message.wrapper;
 
 import com.codahale.metrics.Counter;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.avro.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.allegro.tech.hermes.api.Topic;
+import pl.allegro.tech.hermes.common.config.ConfigFactory;
+import pl.allegro.tech.hermes.common.config.Configs;
 import pl.allegro.tech.hermes.schema.CompiledSchema;
 import pl.allegro.tech.hermes.schema.SchemaRepository;
 import pl.allegro.tech.hermes.schema.SchemaVersion;
@@ -12,6 +15,10 @@ import pl.allegro.tech.hermes.schema.SchemaVersion;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 public class MessageContentWrapper {
 
@@ -21,6 +28,8 @@ public class MessageContentWrapper {
     private final AvroMessageContentWrapper avroMessageContentWrapper;
     private final SchemaRepository schemaRepository;
     private final SchemaOnlineChecksRateLimiter schemaOnlineChecksRateLimiter;
+    private final AggregatingLoggers aggregatingLoggers;
+    private final AggregatingLogger<TopicAndSchemaVersionEntry> failedMatchSchemaVersionLog;
 
     private final Counter deserializationWithMissedSchemaVersionInPayload;
     private final Counter deserializationErrorsForSchemaVersionAwarePayload;
@@ -32,16 +41,32 @@ public class MessageContentWrapper {
                                  AvroMessageContentWrapper avroMessageContentWrapper,
                                  SchemaRepository schemaRepository,
                                  SchemaOnlineChecksRateLimiter schemaOnlineChecksRateLimiter,
-                                 DeserializationMetrics deserializationMetrics) {
+                                 DeserializationMetrics deserializationMetrics,
+                                 ConfigFactory configFactory) {
         this.jsonMessageContentWrapper = jsonMessageContentWrapper;
         this.avroMessageContentWrapper = avroMessageContentWrapper;
         this.schemaRepository = schemaRepository;
         this.schemaOnlineChecksRateLimiter = schemaOnlineChecksRateLimiter;
 
+        this.aggregatingLoggers = new AggregatingLoggers(logger);
+        this.failedMatchSchemaVersionLog = aggregatingLoggers.addLogger(entry ->
+                String.format("Failed to match schema for message for topic %s, schema version %d, fallback to previous.",
+                        entry.topicName, entry.schemaVersion));
+        startAggregatingLoggersReporting(configFactory);
+
         deserializationErrorsForSchemaVersionAwarePayload = deserializationMetrics.errorsForSchemaVersionAwarePayload();
         deserializationErrorsForAnySchemaVersion = deserializationMetrics.errorsForAnySchemaVersion();
         deserializationErrorsForAnyOnlineSchemaVersion = deserializationMetrics.errorsForAnyOnlineSchemaVersion();
         deserializationWithMissedSchemaVersionInPayload = deserializationMetrics.missedSchemaVersionInPayload();
+    }
+
+    private void startAggregatingLoggersReporting(ConfigFactory configFactory) {
+        ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                .setNameFormat("message-content-wrapper-aggregating-logger-%d")
+                .build();
+        Executors.newSingleThreadScheduledExecutor(threadFactory).scheduleAtFixedRate(aggregatingLoggers::report, 0L,
+                configFactory.getLongProperty(Configs.MESSAGE_CONTENT_WRAPPER_AGGREGATING_LOGGERS_REPORTING_INTERVAL),
+                TimeUnit.MILLISECONDS);
     }
 
     public UnwrappedMessageContent unwrapJson(byte[] data) {
@@ -97,8 +122,7 @@ public class MessageContentWrapper {
                         schemaRepository.getAvroSchema(topic, version);
                 return avroMessageContentWrapper.unwrapContent(data, schema);
             } catch (Exception ex) {
-                logger.error("Failed to match schema for message for topic {}, schema version {}, fallback to previous.",
-                        topic.getQualifiedName(), version.value(), ex);
+                failedMatchSchemaVersionLog.mark(new TopicAndSchemaVersionEntry(topic.getQualifiedName(), version.value()), ex);
             }
         }
         logger.error("Could not match schema {} for message of topic {} {}",
@@ -126,5 +150,29 @@ public class MessageContentWrapper {
 
     public byte[] wrapJson(byte[] data, String id, long timestamp, Map<String, String> externalMetadata) {
         return jsonMessageContentWrapper.wrapContent(data, id, timestamp, externalMetadata);
+    }
+
+    private static class TopicAndSchemaVersionEntry {
+        private final String topicName;
+        private final int schemaVersion;
+
+        private TopicAndSchemaVersionEntry(String topicName, int schemaVersion) {
+            this.topicName = topicName;
+            this.schemaVersion = schemaVersion;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TopicAndSchemaVersionEntry that = (TopicAndSchemaVersionEntry) o;
+            return schemaVersion == that.schemaVersion &&
+                    Objects.equals(topicName, that.topicName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(topicName, schemaVersion);
+        }
     }
 }
