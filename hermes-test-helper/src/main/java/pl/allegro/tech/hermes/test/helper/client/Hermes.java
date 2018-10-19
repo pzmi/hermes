@@ -5,6 +5,7 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.proxy.WebResourceFactory;
 import pl.allegro.tech.hermes.api.endpoints.BlacklistEndpoint;
+import pl.allegro.tech.hermes.api.endpoints.BlockadeEndpoint;
 import pl.allegro.tech.hermes.api.endpoints.GroupEndpoint;
 import pl.allegro.tech.hermes.api.endpoints.MigrationEndpoint;
 import pl.allegro.tech.hermes.api.endpoints.OAuthProviderEndpoint;
@@ -110,7 +111,11 @@ public class Hermes {
     }
 
     public BlacklistEndpoint createBlacklistEndpoint() {
+
         return createProxy(url, BlacklistEndpoint.class, managementConfig);
+    }
+    public BlockadeEndpoint createBlockadeEndpoint() {
+        return createProxy(url, BlockadeEndpoint.class, managementConfig);
     }
 
     public AsyncMessagePublisher createAsyncMessagePublisher() {

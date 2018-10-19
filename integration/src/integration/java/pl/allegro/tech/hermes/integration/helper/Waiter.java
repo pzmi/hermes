@@ -159,6 +159,14 @@ public class Waiter extends pl.allegro.tech.hermes.test.helper.endpoint.Waiter {
         untilHermesZookeeperNodeDeletion(zookeeperPaths.blacklistedTopicPath(qualifiedTopicName));
     }
 
+    public void untilBlockadeSet() {
+        untilHermesZookeeperNodeCreation(zookeeperPaths.blockadesPath());
+    }
+
+    public void untilBlockadeRemoved() {
+        untilHermesZookeeperNodeDeletion(zookeeperPaths.blockadesPath());
+    }
+
     private void untilZookeeperNodeCreation(final String path, final CuratorFramework zookeeper) {
         waitAtMost(adjust(60), TimeUnit.SECONDS).until(() -> zookeeper.checkExists().forPath(path) != null);
     }

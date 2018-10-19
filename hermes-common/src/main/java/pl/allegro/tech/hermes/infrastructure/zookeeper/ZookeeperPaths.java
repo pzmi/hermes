@@ -23,6 +23,7 @@ public class ZookeeperPaths {
     public static final String BLACKLIST_PATH = "blacklist";
     public static final String MAX_RATE_PATH = "max-rate";
     public static final String MAX_RATE_HISTORY_PATH = "history";
+    public static final String BLOCKADES_PATH = "blockades";
 
     private final String basePath;
 
@@ -171,5 +172,9 @@ public class ZookeeperPaths {
 
     public String oAuthProviderPath(String oAuthProviderName) {
         return Joiner.on(URL_SEPARATOR).join(oAuthProvidersPath(), oAuthProviderName);
+    }
+
+    public String blockadesPath() {
+        return Joiner.on(URL_SEPARATOR).join(basePath, BLOCKADES_PATH);
     }
 }

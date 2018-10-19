@@ -32,7 +32,9 @@ import pl.allegro.tech.hermes.infrastructure.zookeeper.ZookeeperTopicRepository;
 import pl.allegro.tech.hermes.infrastructure.zookeeper.counter.DistributedEphemeralCounter;
 import pl.allegro.tech.hermes.infrastructure.zookeeper.counter.SharedCounter;
 import pl.allegro.tech.hermes.management.domain.blacklist.TopicBlacklistRepository;
+import pl.allegro.tech.hermes.management.domain.blockade.BlockadeRepository;
 import pl.allegro.tech.hermes.management.infrastructure.blacklist.ZookeeperTopicBlacklistRepository;
+import pl.allegro.tech.hermes.management.infrastructure.blockade.ZookeeperBlockadeRepository;
 
 import javax.annotation.PostConstruct;
 import java.util.Optional;
@@ -125,6 +127,11 @@ public class StorageConfiguration {
     @Bean
     TopicBlacklistRepository topicBlacklistRepository() {
         return new ZookeeperTopicBlacklistRepository(storageZookeeper(), objectMapper, zookeeperPaths());
+    }
+
+    @Bean
+    BlockadeRepository blockadeRepository() {
+        return new ZookeeperBlockadeRepository(storageZookeeper(), objectMapper, zookeeperPaths());
     }
 
     @Bean
